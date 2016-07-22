@@ -1,27 +1,29 @@
-# PokemonGo-Bot - a pokemon script can catch pokemon and spin the pokestop.
+# PokemonGo-Bot - a pokemon script that can catch pokemons and spin the pokestops.
 
 ## Project chat
 
-[![Join the chat at https://gitter.im/PokemonGoF/PokemonGo-Bot](https://badges.gitter.im/PokemonGoF/PokemonGo-Bot.svg)](https://gitter.im/PokemonGoF/PokemonGo-Bot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Slack Status](https://pokemongo-bot.herokuapp.com/badge.svg)](https://pokemongo-bot.herokuapp.com)
 
-We use [Gitter](https://gitter.im) for a Github-integrated web chat. [Click here to join the chat!](https://gitter.im/PokemonGoF/PokemonGo-Bot)
+We use [Slack](https://slack.com) as a web chat. [Click here to join the chat!](https://pokemongo-bot.herokuapp.com)
 
 ## Features:
  * Search Fort(Spin Pokestop)
  * Catch Pokemon
  * Release low cp pokemon
- * Walking as you 
+ * Walking as you
+ * Use the ball you have to catch, don't if you don't have
 
 # To-Do:
 - [ ] Google Map API key setup
-- [ ] Limit the step to farm specific area for pokestops
+- [x] Limit the step to farm specific area for pokestops
+- [ ] Pokemon transfer filter
 - [ ] Drop items when bag is full
 - [ ] Pokemon catch filter
 - [ ] Hatch eggs
 - [ ] Incubate eggs
 - [ ] Evolve pokemons
 - [ ] Use candy
-- [x] Code refector
+- [x] Code refactor
 
 ## Installation
 
@@ -29,8 +31,8 @@ We use [Gitter](https://gitter.im) for a Github-integrated web chat. [Click here
     [Install Python 2.7](https://wiki.python.org/moin/BeginnersGuide/Download)
     [Install PIP](https://pip.pypa.io/en/stable/installing/)
 ### Google Protobuf Installation
-    MAC:  brew update && brew install --devel protobuf 
-### Install Pokemon_Go_Bot 
+    MAC:  brew update && brew install --devel protobuf
+### Install Pokemon_Go_Bot
 
     Download or clone the repository.
     Using a terminal navigate into the clone repository.
@@ -47,7 +49,7 @@ This project uses Google Maps. There's one map coupled with the project, but as 
 3. Wait an eternity.
 4. Click 'Create' on the next page (optionally, fill out the info)
 5. Copy the API key that appears.
-6. After the code done, will update here how to replace
+6. After the code done, will update here how to replace.
 
 ## Usage
     usage: pokecli.py [-h] -a AUTH_SERVICE -u USERNAME -p PASSWORD -l LOCATION [-w]  [-d] [-t] [-s] [-c]
@@ -58,25 +60,30 @@ This project uses Google Maps. There's one map coupled with the project, but as 
       -u USERNAME, --username USERNAME              Username
       -p PASSWORD, --password PASSWORD              Password
       -l LOCATION, --location LOCATION              Location (Address or 'xx.yyyy,zz.ttttt')
-      -w SPEED,  --walk SPEED                       Walk instead of teleport with given speed (meters per second max 4.16 becourse of walking end on 15km/h)
+      -w SPEED,  --walk SPEED                       Walk instead of teleport with given speed (meters per second max 4.16 because of walking end on 15km/h)
       -s SPINSTOP, --spinstop                       Enable Spinning of PokeStops
+      --maxstep MAX_STEP                            Set the steps around your initial location(DEFAULT 5 mean 25 cells around your location)
       -c CP, --cp                                   Set the CP to transfer or lower (eg. 100 will transfer CP0-99)
       -d, --debug                                   Debug Mode
       -t, --test                                    Only parse the specified location
 
 
 ### Command Line Example
-    Pokomon Training Account:
+    Pokemon Trainer Club (PTC) account:
     $ python2 pokecli.py -a ptc -u tejado -p 1234 --location "New York, Washington Square"
     Google Account:
     $ python2 pokecli.py -a google -u tejado -p 1234 --location "New York, Washington Square"
 
 ## FAQ
 
+### Losing Starter Pokemon and others
+    You can use -c 1 to protect your first stage low CP pokemon.
+### Does it run automatally?
+    Not yet, still need a trainer to train the script param. But we are very close to.
 ### Set GEO Location
     It works, use -l "xx.yyyy,zz.ttttt" to set lat long for location. -- diordache
 ### FLEE
-   The status code "3" corresponds to "Flee" - meaning your Pokemon has run away. 
+   The status code "3" corresponds to "Flee" - meaning your Pokemon has ran away.
    {"responses": { "CATCH_POKEMON": { "status": 3 } }
 ### My pokemon are not showing up in my Pokedex?
    Finish the tutorial on a smartphone. This will then allow everything to be visible.
@@ -95,10 +102,13 @@ Quick Tip: When using this script, use a Lucky egg to double the XP for 30 mins.
  * googlemaps
 
 
-## Contributors
+## Contributors (Don't forget add yours here when you create PR:)
 eggins -- The first pull request :)  
 crack00r  
 ethervoid
+Bashin
+tstumm
+TheGoldenXY
 
 ## Credits
 ### The works are based on the Pokemon Go API
