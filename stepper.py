@@ -1,10 +1,38 @@
 import time
+import random
 
+from collections import namedtuple
 from s2sphere import CellId, LatLng
 from google.protobuf.internal import encoder
-
 from pgoapi.utilities import f2i, h2f
 
+def _encode(cellid):
+    output = []
+    encoder._VarintEncoder()(output.append, cellid)
+    return ''.join(output)
+
+def _get_cellid(lat, long):
+    origin = CellId.from_lat_lng(LatLng.from_degrees(lat, long)).parent(15)
+    walk = [origin.id()]
+
+    # 10 before and 10 after
+    next = origin.next()
+    prev = origin.prev()
+    for i in range(10):
+        walk.append(prev.id())
+        walk.append(next.id())
+        next = next.next()
+        prev = prev.prev()
+    return ''.join(map(_encode, sorted(walk)))
+
+Position = namedtuple('Position', 'lat lon alt')
+
+METER_TO_DEG = 1. / (60 * 1852)
+
+def fuzz(pos, tolerance=5):
+    n0 = random.normalvariate(0, tolerance * METER_TO_DEG)
+    n1 = random.normalvariate(0, tolerance * METER_TO_DEG)
+    return Position(pos.lat + n0, pos.lon + n1, pos.alt)
 
 class Stepper(object):
 
@@ -43,7 +71,7 @@ class Stepper(object):
             # get map objects call
             # ----------------------
             timestamp = "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"
-            cellid = self._get_cellid(position[0], position[1])
+            cellid = _get_cellid(position[0], position[1])
             self.api.get_map_objects(latitude=f2i(position[0]), longitude=f2i(position[1]), since_timestamp_ms=timestamp, cell_id=cellid)
 
             response_dict = self.api.call()
@@ -56,24 +84,43 @@ class Stepper(object):
                 map_cells=response_dict['responses']['GET_MAP_OBJECTS']['map_cells']
                 #print('map_cells are {}'.format(len(map_cells)))
                 for cell in map_cells:
-                    self.bot.work_on_cell(cell,position)
+                    self.bot.work_on_cell(cell, position)
             time.sleep(10)
 
-    def _get_cellid(self, lat, long):
-        origin = CellId.from_lat_lng(LatLng.from_degrees(lat, long)).parent(15)
-        walk = [origin.id()]
+class RandomStepper:
+    def __init__(self, bot, step_dist=15):
+        self.bot = bot
+        self.api = bot.api
+        self.config = bot.config
+        self.pos = Position(*self.bot.position)
+        self.step_dist = step_dist
 
-        # 10 before and 10 after
-        next = origin.next()
-        prev = origin.prev()
-        for i in range(10):
-            walk.append(prev.id())
-            walk.append(next.id())
-            next = next.next()
-            prev = prev.prev()
-        return ''.join(map(self._encode, sorted(walk)))
+    def take_step(self):
+        self.pos = fuzz(self.pos, tolerance=self.step_dist)
 
-    def _encode(self, cellid):
-        output = []
-        encoder._VarintEncoder()(output.append, cellid)
-        return ''.join(output)
+        self.bot.log.info('Position: {}, Walk Speed: {}'\
+                          .format(self.pos, self.config.walk))
+        self.api.walk(self.config.walk, *self.pos)
+
+        timestamp = "\000" * 21
+        cellid = _get_cellid(self.pos.lat, self.pos.lon)
+        self.api.get_map_objects(latitude=f2i(self.pos.lat),
+                                 longitude=f2i(self.pos.lon),
+                                 since_timestamp_ms=timestamp,
+                                 cell_id=cellid)
+        res = self.api.call()
+        try:
+            map_cells = res['responses']['GET_MAP_OBJECTS']['map_cells']
+
+            cell_forts = [c for c in map_cells if 'forts' in map_cells]
+            cell_no_forts = [c for c in map_cells if 'forts' not in map_cells]
+
+            for cell in cell_no_forts:
+                self.bot.work_on_cell(cell, self.pos)
+            for cell in cell_forts:
+                self.bot.work_on_cell(cell, self.pos)
+
+        except KeyError:
+            print "get_map_objects returning incorrectly!"
+
+        time.sleep(5)

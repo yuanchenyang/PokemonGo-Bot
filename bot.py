@@ -6,9 +6,10 @@ import time
 from pgoapi import PGoApi
 from pgoapi.utilities import f2i, h2f
 from cell_workers import PokemonCatchWorker, SeenFortWorker
-from stepper import Stepper
+from stepper import Stepper, RandomStepper
 from geopy.geocoders import GoogleV3
 from math import radians, sqrt, sin, cos, atan2
+from pdb import set_trace as T
 
 class PokemonGoBot(object):
 
