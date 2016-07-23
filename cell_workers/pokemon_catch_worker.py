@@ -1,6 +1,7 @@
 import time
 from sets import Set
 from pgoapi.utilities import f2i, h2f, distance
+from itertools import groupby
 
 class PokemonCatchWorker(object):
 
@@ -14,6 +15,11 @@ class PokemonCatchWorker(object):
         self.inventory = bot.inventory
         self.ballstock = bot.ballstock
         self.noballs = bot.noballs
+
+    def pokemon_name_from_id(self, pokemon_id):
+        pokemon_num=int(pokemon_id)-1
+        return self.pokemon_list[int(pokemon_num)]['Name']
+
     def work(self):
         encounter_id = self.pokemon['encounter_id']
         spawnpoint_id = self.pokemon['spawnpoint_id']
@@ -47,12 +53,11 @@ class PokemonCatchWorker(object):
                             pokemon=response_dict['responses']['ENCOUNTER']['wild_pokemon']
                             if 'pokemon_data' in pokemon and 'cp' in pokemon['pokemon_data']:
                                 cp=pokemon['pokemon_data']['cp']
-                                pokemon_num=int(pokemon['pokemon_data']['pokemon_id'])-1
-                                pokemon_name=self.pokemon_list[int(pokemon_num)]['Name']
+                                pokemon_name=self.pokemon_name_from_id(pokemon['pokemon_data']['pokemon_id'])
                                 print('[#] A Wild ' + str(pokemon_name) + ' appeared! [CP' + str(cp) + ']')
                         while(True):
                             id_list1 = self.count_pokemon_inventory()
-                            
+
                             if self.ballstock[1] > 0:
                                 #DEBUG - Hide
                                 #print 'use Poke Ball'
@@ -61,12 +66,12 @@ class PokemonCatchWorker(object):
                                 #DEBUG - Hide
                                 #print 'no Poke Ball'
                                 pokeball = 0
-                                
+
                             if cp > 200 and self.ballstock[2] > 0:
                                 #DEBUG - Hide
                                 #print 'use Great Ball'
                                 pokeball = 2
-                                
+
                             if cp > 400 and self.ballstock[3] > 0:
                                 #DEBUG - Hide
                                 #print 'use Utra Ball'
@@ -78,7 +83,7 @@ class PokemonCatchWorker(object):
                                 print('[x] Farming pokeballs...')
                                 self.noballs = True
                                 break
-                            
+
                             print('[x] Using ' + self.item_list[str(pokeball)] + '...')
                             self.api.catch_pokemon(encounter_id = encounter_id,
                                 pokeball = pokeball,
@@ -91,7 +96,7 @@ class PokemonCatchWorker(object):
 
                             #DEBUG - Hide
                             #print ('used ' + self.item_list[str(pokeball)] + '> [-1]')
-                            self.ballstock[pokeball] -= 1 
+                            self.ballstock[pokeball] -= 1
 
                             if response_dict and \
                                 'responses' in response_dict and \
@@ -105,8 +110,12 @@ class PokemonCatchWorker(object):
                                 if status is 3:
                                     print('[x] Oh no! ' + str(pokemon_name) + ' vanished! :(')
                                 if status is 1:
+                                    print('[x] Captured {}! [CP {}]'.format(pokemon_name, cp))
+
+                                    if self.config.pokelimit is not None:
+                                        self.transfer_all_but_k(self.config.pokelimit)
+
                                     if cp < self.config.cp:
-                                        print('[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + '] - exchanging for candy')
                                         id_list2 = self.count_pokemon_inventory()
                                         try:
                                             # Transfering Pokemon
@@ -114,8 +123,6 @@ class PokemonCatchWorker(object):
                                         except:
                                             print('[###] Your inventory is full! Please manually delete some items.')
                                             break
-                                    else:
-                                        print('[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + ']')
                             break
         time.sleep(5)
 
@@ -143,17 +150,20 @@ class PokemonCatchWorker(object):
     		print('[x] Exchanged successfully!')
 
     def transfer_pokemon(self, pid):
+        pokemon_name = self.pokemon_name_from_id(pid)
+        print('[x] Exchanging {} for candy'.format(pokemon_name))
         self.api.release_pokemon(pokemon_id=pid)
         response_dict = self.api.call()
+        time.sleep(2)
         print('[x] Exchanged successfully!')
 
     def count_pokemon_inventory(self):
         self.api.get_inventory()
         response_dict = self.api.call()
-        id_list = []
-        return self.counting_pokemon(response_dict, id_list)
+        return self.counting_pokemon(response_dict)
 
-    def counting_pokemon(self, response_dict, id_list):
+    def counting_pokemon(self, response_dict):
+        id_list = []
         if 'responses' in response_dict:
             if 'GET_INVENTORY' in response_dict['responses']:
                 if 'inventory_delta' in response_dict['responses']['GET_INVENTORY']:
@@ -164,3 +174,29 @@ class PokemonCatchWorker(object):
                                     pokemon = item['inventory_item_data']['pokemon']
                                     id_list.append(pokemon['id'])
         return id_list
+
+    def get_pokemons(self):
+        self.api.get_inventory()
+        res = self.api.call()
+        try:
+            pokemons = [item['inventory_item_data']['pokemon']
+                for item in res['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']
+                if 'pokemon'    in item['inventory_item_data'] and
+                   'is_egg' not in item['inventory_item_data']['pokemon']]
+            return pokemons
+        except KeyError:
+            print 'Error getting pokemon list'
+            return []
+
+    def transfer_all_but_k(self, k):
+        pokemons = self.get_pokemons()
+        to_transfer = []
+
+        for pid, group in groupby(pokemons, lambda x: x['pokemon_id']):
+            g = list(group)
+            if len(g) > k:
+                for obj in sorted(g, key=lambda x: x['cp'], reverse=True)[:k]:
+                    to_transfer.append(obj['id'])
+
+        for pid in to_transfer:
+            self.transfer_pokemon(pid)
