@@ -184,13 +184,16 @@ class PokemonCatchWorker(object):
 
     def transfer_all_but_k(self, k):
         pokemons = self.get_pokemons()
-        to_transfer = []
+        transfer_ids = []
+        transfer_infos = []
 
         for pid, group in groupby(pokemons, lambda x: x['pokemon_id']):
             g = list(group)
             if len(g) > k:
                 for obj in sorted(g, key=lambda x: x['cp'], reverse=True)[:k]:
-                    to_transfer.append(obj['id'])
+                    transfer_ids.append(obj['id'])
+                    transfer_infos.append((self.pokemon_name_from_id(pid), obj['cp']))
 
-        for pid in to_transfer:
+        for info, pid in zip(transfer_infos, transfer_ids):
+            print '[x] Exchanging {} [CP {}] for candy'.format(*info)
             self.transfer_pokemon(pid)
