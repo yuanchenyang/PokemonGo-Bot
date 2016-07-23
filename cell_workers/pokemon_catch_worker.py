@@ -116,13 +116,9 @@ class PokemonCatchWorker(object):
                                         self.transfer_all_but_k(self.config.pokelimit)
 
                                     if cp < self.config.cp:
+                                        print('[x] Exchanging {} for candy'.format(pokemon_name))
                                         id_list2 = self.count_pokemon_inventory()
-                                        try:
-                                            # Transfering Pokemon
-                                            self.transfer_pokemon(list(Set(id_list2) - Set(id_list1))[0])
-                                        except:
-                                            print('[###] Your inventory is full! Please manually delete some items.')
-                                            break
+                                        self.transfer_pokemon(list(Set(id_list2) - Set(id_list1))[0])
                             break
         time.sleep(5)
 
@@ -150,8 +146,6 @@ class PokemonCatchWorker(object):
     		print('[x] Exchanged successfully!')
 
     def transfer_pokemon(self, pid):
-        pokemon_name = self.pokemon_name_from_id(pid)
-        print('[x] Exchanging {} for candy'.format(pokemon_name))
         self.api.release_pokemon(pokemon_id=pid)
         response_dict = self.api.call()
         time.sleep(2)
