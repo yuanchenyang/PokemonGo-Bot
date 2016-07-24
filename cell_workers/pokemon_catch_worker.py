@@ -1,7 +1,7 @@
 import time
 from sets import Set
 from pgoapi.utilities import f2i, h2f, distance
-from itertools import groupby
+from collections import defaultdict
 
 class PokemonCatchWorker(object):
 
@@ -94,6 +94,8 @@ class PokemonCatchWorker(object):
                                 NormalizedHitPosition = 1)
                             response_dict = self.api.call()
 
+                            time.sleep(3)
+
                             #DEBUG - Hide
                             #print ('used ' + self.item_list[str(pokeball)] + '> [-1]')
                             self.ballstock[pokeball] -= 1
@@ -105,21 +107,22 @@ class PokemonCatchWorker(object):
                                 status = response_dict['responses']['CATCH_POKEMON']['status']
                                 if status is 2:
                                     print('[-] Attempted to capture ' + str(pokemon_name) + ' - failed.. trying again!')
-                                    time.sleep(1.25)
+                                    time.sleep(3)
                                     continue
                                 if status is 3:
                                     print('[x] Oh no! ' + str(pokemon_name) + ' vanished! :(')
                                 if status is 1:
                                     print('[x] Captured {}! [CP {}]'.format(pokemon_name, cp))
 
-                                    if self.config.pokelimit is not None:
-                                        self.transfer_all_but_k(self.config.pokelimit)
-
                                     if cp < self.config.cp:
                                         print('[x] Exchanging {} for candy'.format(pokemon_name))
                                         id_list2 = self.count_pokemon_inventory()
                                         self.transfer_pokemon(list(Set(id_list2) - Set(id_list1))[0])
+
+                                    if self.config.pokelimit is not None:
+                                        self.transfer_all_but_k(self.config.pokelimit)
                             break
+
         time.sleep(5)
 
     def _transfer_low_cp_pokemon(self, value):
@@ -187,10 +190,13 @@ class PokemonCatchWorker(object):
         transfer_ids = []
         transfer_infos = []
 
-        for pid, group in groupby(pokemons, lambda x: x['pokemon_id']):
-            g = list(group)
-            if len(g) > k:
-                for obj in sorted(g, key=lambda x: x['cp'], reverse=True)[:k]:
+        groups = defaultdict(list)
+        for obj in pokemons:
+            groups[obj['pokemon_id']].append(obj)
+
+        for pid, group in groups.items():
+            if len(group) > k:
+                for obj in sorted(group, key=lambda x: x['cp'], reverse=True)[k:]:
                     transfer_ids.append(obj['id'])
                     transfer_infos.append((self.pokemon_name_from_id(pid), obj['cp']))
 
